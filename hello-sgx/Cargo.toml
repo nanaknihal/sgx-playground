@@ -1,0 +1,33 @@
+[package]
+name = "hello-sgx"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+sgx-isa = { version = "0.2", features = ["sgxstd"] }
+rand = "0.6.4"
+libp2p = "0.51.1"
+hyper = { version = "1.0.0-rc.3", features = ["full"] }
+serde = "1.0.157"
+#http_req = "0.9.0"
+#minreq = { version = "2.6.0", features = ["https"] }
+#reqwest = { version = "0.11.14", features = ["blocking", "json"] }
+
+[package.metadata.fortanix-sgx]
+# stack size (in bytes) for each thread, the default stack size is 0x20000.
+stack-size=0x20000
+# heap size (in bytes), the default heap size is 0x2000000.
+heap-size=0x2000000
+# the default number of threads is equal to the number of available CPUs of
+# the current system.
+# Gotcha: Don't forget to count the main thread when counting number of
+# threads.
+threads=1
+# SSA frame size (in pages) for each thread, the default SSA frame size is 1.
+# You normally don't need to change the SSA frame size.
+ssaframesize=1
+# whether to enable EDP debugging features in the enclave, debugging is
+# enabled by default.
+debug=true
