@@ -2,24 +2,49 @@ use sgx_isa::{Attributes, Miscselect, ErrorCode, Keyname, Keypolicy, Keyrequest,
 use rand::random;
 extern crate serde;
 use serde::{Serialize, Deserialize};
-
+// use bincode::{config, Decode, Encode};
+// use serde_json;
 // use sgx_isa::{Report, Targetinfo};
 // use std::net::{TcpListener, TcpStream};
 // use std::io::{self, Read, Write};
 
 
 // For key sealing
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SealData {
     rand: [u8; 16],
     isvsvn: u16,
     cpusvn: [u8; 16],
-    // Record attributes and miscselect so that we can verify that
-    // we can derive the correct wrapping key, but the actual input
-    // to the derivation is CPU enclave state + SW-specified masks.
-    attributes: Attributes,
-    miscselect: Miscselect,
+    /* Commenting out so don't have to work with serialization and deserialization of these unusual structs */
+    // // Record attributes and miscselect so that we can verify that
+    // // we can derive the correct wrapping key, but the actual input
+    // // to the derivation is CPU enclave state + SW-specified masks.
+    // attributes: Attributes, //Serializable,
+    // miscselect: Miscselect //Serializable,
 }
 
+// Let's ignore this tough serde for the macro'd Attributes and just assume attributes and miscselect are the same
+// #[derive(Serialize, Deserialize)]
+// #[serde(remote = "Attributes")]
+// struct AttributesDef {
+//     pub flags: AttributesFlags,
+//     pub xfrm: u64,
+// }
+
+// #[derive(Serialize, Deserialize)]
+// struct AttributesFlagsDef {
+//         INIT          : u64, 
+//         DEBUG         : u64, 
+//         MODE64BIT     : u64, 
+//         PROVISIONKEY  : u64, 
+//         EINITTOKENKEY : u64 
+// }
+// #[derive(Serialize, Deserialize)]
+// #[serde(untagged)]
+// enum Serializable {
+//     Attributes(Attributes),
+//     Miscselect(Miscselect)
+// }
 fn egetkey(label: [u8; 16], seal_data: &SealData) -> Result<[u8; 16], ErrorCode> {
     // Key ID is combined from fixed label and random data
     let mut keyid = [0; 32];
@@ -45,29 +70,34 @@ pub fn get_seal_key_for_label(label: [u8; 16]) -> ([u8; 16], SealData) {
         rand: random(),
         isvsvn: report.isvsvn,
         cpusvn: report.cpusvn,
-        attributes: report.attributes,
-        miscselect: report.miscselect
+        // attributes: report.attributes,
+        // miscselect: report.miscselect
     };
     // Return the key and data to to store alongside the label
     (egetkey(label, &seal_data).unwrap(), seal_data)
 }
 
 pub fn recover_seal_key(label: [u8; 16], seal_data: SealData) -> Result<[u8; 16], ErrorCode> {
-    let report = Report::for_self();
+    // let report = Report::for_self();
 
-    if report.attributes != seal_data.attributes 
-    || report.miscselect != seal_data.miscselect
-    {
-        return Err(ErrorCode::InvalidAttribute)
-    }
+    // if report.attributes != seal_data.attributes 
+    // || report.miscselect != seal_data.miscselect
+    // {
+    //     return Err(ErrorCode::InvalidAttribute)
+    // }
     egetkey(label, &seal_data)
 }
 
 fn main() {
+    // TODO: put this in test
     let label: [u8; 16] = [69; 16];
     let (key, seal_data) = get_seal_key_for_label(label);
+    let ser_seal_data: String = serde_json::to_string(&seal_data).unwrap();
+    
+    // Deserialize and recover key
+    let de_seal_data: SealData = serde_json::from_str(&ser_seal_data).unwrap();
+    let recovered = recover_seal_key(label, de_seal_data).unwrap();
     println!("{:?}", key);
-    let recovered = recover_seal_key(label, seal_data);
     println!("{:?}", recovered);
 }
 
